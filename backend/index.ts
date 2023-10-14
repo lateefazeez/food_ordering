@@ -1,15 +1,18 @@
 import express from "express";
-import expressWinston from "express-winston";
-import { logger, internalErrorLogger } from "./utility/logger";
+import App from "./services/ExpressApp";
+import dbConnection from "./services/Database";
+import { logger } from "./utility/LoggerUtility";
 
 const PORT = process.env.PORT || 8000;
 
-const app = express();
+const startServer = async () => {
+  const app = express();
+  await dbConnection();
+  await App(app);
 
-app.use("/", (req, res) => {
-  return res.json({ message: "Hello from Food Order Backend" });
-});
+  app.listen(PORT, () => {
+    logger.info(`App started at port ${PORT}`);
+  });
+};
 
-app.listen(PORT, () => {
-  logger.info(`App started at port ${PORT}`);
-});
+startServer();
