@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import { EditVendorInput, VendorLoginInput } from "../dto";
-import { Vendor } from "../models";
+import { Food, Vendor } from "../models";
 import { findVendor } from "./AdminController";
 import { generateSignature, validatePassword } from "../utility";
+import { CreateFoodInput } from "../dto/Food.dto";
 
 export const VendorLogin = async (
   req: Request,
@@ -99,6 +100,36 @@ export const UpdateVendorProfile = async (
   });
 };
 
+export const UpdateVendorCoverImage = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const user = req.user;
+  if (user) {
+    const existingVendor = await findVendor(user._id);
+
+    if (existingVendor) {
+      const files = req.files as Express.Multer.File[];
+      const images = files.map((f) => f.filename);
+
+      existingVendor.coverImages.push(...images);
+      const updatedVendor = await existingVendor.save();
+
+      return res.json({
+        status: res.status,
+        message: "Vendor Cover Image Uploaded Successfuly",
+        data: updatedVendor,
+      });
+    }
+  }
+
+  return res.json({
+    status: res.status,
+    message: "User not authorized",
+  });
+};
+
 export const UpdateVendorServices = async (
   req: Request,
   res: Response,
@@ -117,6 +148,71 @@ export const UpdateVendorServices = async (
         status: res.status,
         message: "Vendor Service Updated Successfuly",
         data: updatedVendor,
+      });
+    }
+  }
+
+  return res.json({
+    status: res.status,
+    message: "User not authorized",
+  });
+};
+
+export const AddFood = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const user = req.user;
+
+  if (user) {
+    const { name, description, price, foodType, readyTime, category } = <
+      CreateFoodInput
+    >req.body;
+
+    const existingVendor = await findVendor(user._id);
+    if (existingVendor) {
+      const file = req.files as Express.Multer.File[];
+
+      const images = file.map((f) => f.filename);
+
+      const createdFood = await Food.create({
+        name: name,
+        description: description,
+        category: category,
+        price: price,
+        vendorId: existingVendor._id,
+        foodType: foodType,
+        readyTime: readyTime,
+        images: images,
+      });
+
+      existingVendor.foods.push(createdFood);
+      existingVendor.save();
+
+      return res.json({
+        status: res.status,
+        message: `${createdFood.name} added successfully`,
+        data: createdFood,
+      });
+    }
+  }
+};
+
+export const GetFoods = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const user = req.user;
+
+  if (user) {
+    const foods = await Food.find({ vendorId: user._id });
+    if (foods) {
+      return res.json({
+        status: res.status,
+        message: "Foods retrieved successfully",
+        data: foods,
       });
     }
   }

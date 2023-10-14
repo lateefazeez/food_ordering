@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document, Model } from "mongoose";
+import mongoose, { Schema, Document } from "mongoose";
 
 interface VendorDoc extends Document {
   name: string;
@@ -13,7 +13,7 @@ interface VendorDoc extends Document {
   serviceAvailable: boolean;
   coverImages: [string];
   rating: number;
-  // foods: any;
+  foods: any;
 }
 
 // Schema
@@ -68,12 +68,12 @@ const VendorSchema: Schema = new Schema(
       type: Number,
       default: 0,
     },
-    // foods: [
-    //   {
-    //     type: mongoose.SchemaTypes.ObjectId,
-    //     ref: "Food",
-    //   },
-    // ],
+    foods: [
+      {
+        type: mongoose.SchemaTypes.ObjectId,
+        ref: "Food",
+      },
+    ],
   },
   {
     // removed these from returned json data
