@@ -3,6 +3,14 @@ import { CreateVendorInput } from "../dto/Vendor.dto";
 import { Vendor } from "../models";
 import { generateHashedPassword, generateSalt } from "../utility";
 
+export const findVendor = async (id: string | undefined, email?: string) => {
+  if (email) {
+    return await Vendor.findOne({ email: email });
+  }
+
+  return await Vendor.findById(id);
+};
+
 export const CreateVendor = async (
   req: Request,
   res: Response,
@@ -19,7 +27,7 @@ export const CreateVendor = async (
     password,
   } = <CreateVendorInput>req.body;
 
-  const existingVendor = await Vendor.findOne({ email: email, phone: phone });
+  const existingVendor = await findVendor("", email);
 
   if (existingVendor) {
     return res.json({
@@ -60,22 +68,42 @@ export const GetVendors = async (
   req: Request,
   res: Response,
   next: NextFunction
-) => {};
+) => {
+  const vendors = await Vendor.find();
+
+  if (vendors !== null) {
+    return res.json({
+      status: res.status,
+      message: "Vendors retrieved successfully",
+      data: vendors,
+    });
+  }
+
+  return res.json({
+    status: res.status,
+    message: "No Vendors found",
+    data: [],
+  });
+};
 
 export const GetVendorByID = async (
   req: Request,
   res: Response,
   next: NextFunction
-) => {};
+) => {
+  const vendorId = req.params.id;
+  if (vendorId !== null || vendorId !== undefined) {
+    const vendor = await findVendor(vendorId);
+    return res.json({
+      status: res.status,
+      message: "Vendor retrieved successfully",
+      data: vendor,
+    });
+  }
 
-export const UpdateVendor = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {};
-
-export const DeleteVendor = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {};
+  return res.json({
+    status: res.status,
+    message: "No Vendor found",
+    data: {},
+  });
+};
