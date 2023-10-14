@@ -1,28 +1,18 @@
 import express from "express";
-import bodyParser from "body-parser";
-import mongoose from "mongoose";
-import { logger, internalErrorLogger } from "./utility/LoggerUtility";
-import { adminRoute, vendorRoute } from "./routes";
-import { MONGO_URI } from "./config";
+import App from "./services/ExpressApp";
+import dbConnection from "./services/Database";
+import { logger } from "./utility/LoggerUtility";
 
 const PORT = process.env.PORT || 8000;
 
-const app = express();
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+const startServer = async () => {
+  const app = express();
+  await dbConnection();
+  await App(app);
 
-app.use("/admin", adminRoute);
-app.use("/vendor", vendorRoute);
-
-mongoose
-  .connect(MONGO_URI)
-  .then((result) => {
-    logger.info(`connected to Mongo database`);
-  })
-  .catch((err) => {
-    logger.error(`error connecting to Mongo database: ${err}`);
+  app.listen(PORT, () => {
+    logger.info(`App started at port ${PORT}`);
   });
+};
 
-app.listen(PORT, () => {
-  logger.info(`App started at port ${PORT}`);
-});
+startServer();
