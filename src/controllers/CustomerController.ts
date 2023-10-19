@@ -3,6 +3,7 @@ import express, { Request, Response, NextFunction } from "express";
 import {
   CreateCustomerInputs,
   EditCustomerProfileInputs,
+  OrderInputs,
   UserLoginInputs,
 } from "../dto/Customer.dto";
 import { validate } from "class-validator";
@@ -15,6 +16,8 @@ import {
   validatePassword,
 } from "../utility";
 import { Customer } from "../models/Customer";
+import { Food } from "../models";
+import { Order } from "../models/Order";
 
 export const CustomerSignup = async (
   req: Request,
@@ -48,6 +51,7 @@ export const CustomerSignup = async (
     verified: false,
     lat: 0,
     long: 0,
+    orders: [],
   });
 
   if (result) {
@@ -232,4 +236,102 @@ export const UpdateCustomerProfile = async (
   }
 
   return res.status(400).json({ message: "User Profile cannot be updated" });
+};
+
+export const CreateOrder = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  // grab current logged in customer
+  const customer = req.user;
+
+  if (customer) {
+    // create an oder ID
+    const orderId = `${Math.floor(Math.random() * 899999) + 1000}`;
+
+    const profile = await Customer.findById(customer._id);
+
+    const cart = <[OrderInputs]>req.body;
+
+    let cartItems = Array();
+
+    let netAmount = 0.0;
+
+    // Calculate order amount
+    const foods = await Food.find()
+      .where("_id")
+      .in(cart.map((item) => item._id))
+      .exec();
+
+    foods.map((food) => {
+      cart.map(({ _id, unit }) => {
+        if (food._id == _id) {
+          netAmount += food.price * unit;
+          cartItems.push({ food, unit });
+        }
+      });
+    });
+
+    // create order with item descriptions
+    if (cartItems) {
+      // create order
+      const currentOrder = await Order.create({
+        orderId: orderId,
+        items: cartItems,
+        totalAmount: netAmount,
+        orderDate: new Date(),
+        paidThrough: "COD",
+        paymentResponse: "",
+        orderStatus: "pending",
+      });
+
+      if (currentOrder) {
+        // add order to customer
+        profile.orders.push(currentOrder);
+
+        // save customer
+        await profile.save();
+
+        return res.status(200).json(currentOrder);
+      }
+    }
+  }
+
+  return res.status(400).json({ message: "Error with Order Creation" });
+};
+
+export const GetOrders = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  // grab current logged in customer
+  const customer = req.user;
+
+  if (customer) {
+    const profile = await Customer.findById(customer._id).populate("orders");
+
+    if (profile) {
+      return res.status(200).json(profile.orders);
+    }
+  }
+
+  return res.status(400).json({ message: "Error Getting Orders" });
+};
+
+export const GetOrderById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  // grab current logged in customer
+  const orderId = req.params.id;
+
+  if (orderId) {
+    const order = await Order.findById(orderId).populate("items.food");
+    return res.status(200).json(order);
+  }
+
+  return res.status(400).json({ message: "Error Getting Order" });
 };

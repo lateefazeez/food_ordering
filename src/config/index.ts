@@ -1,6 +1,8 @@
 export const MONGO_URI =
   process.env.API_MONGO_URI ||
-  "mongodb+srv://user_2:Kgt9jcuWkrZbayDO@foodorderapp.phvty8w.mongodb.net/?retryWrites=true&w=majority";
+  process.env.API_MONGO_URI ||
+  "mongodb://localhost:27017/food-ordering-app";
+// "mongodb+srv://user_2:Kgt9jcuWkrZbayDO@foodorderapp.phvty8w.mongodb.net/?retryWrites=true&w=majority";
 
 // process.env.API_MONGO_URI || "mongodb://localhost:27017/food-ordering-app";
 

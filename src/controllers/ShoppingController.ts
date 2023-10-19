@@ -16,7 +16,7 @@ export const GetFoodAvailability = async (
     .populate("foods");
 
   if (result.length > 0) {
-    res.status(200).json({
+    return res.status(200).json({
       message: "Foods fetched successfully",
       data: result,
     });
@@ -43,7 +43,7 @@ export const GetTopRestaurants = async (
     .limit(10);
 
   if (result.length > 0) {
-    res.status(200).json({
+    return res.status(200).json({
       message: "Top Restaurants fetched successfully",
       data: result,
     });
