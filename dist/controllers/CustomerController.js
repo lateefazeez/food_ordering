@@ -9,12 +9,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UpdateCustomerProfile = exports.GetCustomerProfile = exports.RequestOtp = exports.CustomerVerify = exports.CustomerLogin = exports.CustomerSignup = void 0;
+exports.GetOrderById = exports.GetOrders = exports.CreateOrder = exports.UpdateCustomerProfile = exports.GetCustomerProfile = exports.RequestOtp = exports.CustomerVerify = exports.CustomerLogin = exports.CustomerSignup = void 0;
 const class_transformer_1 = require("class-transformer");
 const Customer_dto_1 = require("../dto/Customer.dto");
 const class_validator_1 = require("class-validator");
 const utility_1 = require("../utility");
 const Customer_1 = require("../models/Customer");
+const models_1 = require("../models");
+const Order_1 = require("../models/Order");
 const CustomerSignup = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const customerInput = (0, class_transformer_1.plainToClass)(Customer_dto_1.CreateCustomerInputs, req.body);
     const inputErrors = yield (0, class_validator_1.validate)(customerInput, {
@@ -39,6 +41,7 @@ const CustomerSignup = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
         verified: false,
         lat: 0,
         long: 0,
+        orders: [],
     });
     if (result) {
         // send OTP to customer
@@ -165,4 +168,73 @@ const UpdateCustomerProfile = (req, res, next) => __awaiter(void 0, void 0, void
     return res.status(400).json({ message: "User Profile cannot be updated" });
 });
 exports.UpdateCustomerProfile = UpdateCustomerProfile;
+const CreateOrder = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    // grab current logged in customer
+    const customer = req.user;
+    if (customer) {
+        // create an oder ID
+        const orderId = `${Math.floor(Math.random() * 899999) + 1000}`;
+        const profile = yield Customer_1.Customer.findById(customer._id);
+        const cart = req.body;
+        let cartItems = Array();
+        let netAmount = 0.0;
+        // Calculate order amount
+        const foods = yield models_1.Food.find()
+            .where("_id")
+            .in(cart.map((item) => item._id))
+            .exec();
+        foods.map((food) => {
+            cart.map(({ _id, unit }) => {
+                if (food._id == _id) {
+                    netAmount += food.price * unit;
+                    cartItems.push({ food, unit });
+                }
+            });
+        });
+        // create order with item descriptions
+        if (cartItems) {
+            // create order
+            const currentOrder = yield Order_1.Order.create({
+                orderId: orderId,
+                items: cartItems,
+                totalAmount: netAmount,
+                orderDate: new Date(),
+                paidThrough: "COD",
+                paymentResponse: "",
+                orderStatus: "pending",
+            });
+            if (currentOrder) {
+                // add order to customer
+                profile.orders.push(currentOrder);
+                // save customer
+                yield profile.save();
+                return res.status(200).json(currentOrder);
+            }
+        }
+    }
+    return res.status(400).json({ message: "Error with Order Creation" });
+});
+exports.CreateOrder = CreateOrder;
+const GetOrders = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    // grab current logged in customer
+    const customer = req.user;
+    if (customer) {
+        const profile = yield Customer_1.Customer.findById(customer._id).populate("orders");
+        if (profile) {
+            return res.status(200).json(profile.orders);
+        }
+    }
+    return res.status(400).json({ message: "Error Getting Orders" });
+});
+exports.GetOrders = GetOrders;
+const GetOrderById = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    // grab current logged in customer
+    const orderId = req.params.id;
+    if (orderId) {
+        const order = yield Order_1.Order.findById(orderId).populate("items.food");
+        return res.status(200).json(order);
+    }
+    return res.status(400).json({ message: "Error Getting Order" });
+});
+exports.GetOrderById = GetOrderById;
 //# sourceMappingURL=CustomerController.js.map

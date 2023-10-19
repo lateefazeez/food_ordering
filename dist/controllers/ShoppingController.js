@@ -20,7 +20,7 @@ const GetFoodAvailability = (req, res, next) => __awaiter(void 0, void 0, void 0
         .sort([["rating", "descending"]])
         .populate("foods");
     if (result.length > 0) {
-        res.status(200).json({
+        return res.status(200).json({
             message: "Foods fetched successfully",
             data: result,
         });
@@ -40,7 +40,7 @@ const GetTopRestaurants = (req, res, next) => __awaiter(void 0, void 0, void 0, 
         .sort([["rating", "descending"]])
         .limit(10);
     if (result.length > 0) {
-        res.status(200).json({
+        return res.status(200).json({
             message: "Top Restaurants fetched successfully",
             data: result,
         });

@@ -23,73 +23,44 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Customer = void 0;
+exports.Order = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 // Schema
-const CustomerSchema = new mongoose_1.Schema({
-    email: {
+const OrderSchema = new mongoose_1.Schema({
+    orderId: {
         type: String,
         required: true,
     },
-    password: {
-        type: String,
-        required: true,
-    },
-    salt: {
-        type: String,
-        required: true,
-    },
-    firstName: {
-        type: String,
-    },
-    lastName: {
-        type: String,
-    },
-    address: {
-        type: String,
-    },
-    phone: {
-        type: String,
-        required: true,
-    },
-    verified: {
-        type: Boolean,
-        required: false,
-    },
-    otp: {
-        type: Number,
-        required: true,
-    },
-    otp_expiry: {
-        type: Date,
-        required: true,
-    },
-    lat: {
-        type: Number,
-    },
-    long: {
-        type: Number,
-    },
-    orders: [
+    items: [
         {
-            type: mongoose_1.Schema.Types.ObjectId,
-            ref: "Order",
+            food: { type: mongoose_1.Schema.Types.ObjectId, ref: "Food", required: true },
+            unit: { type: Number, required: true },
         },
     ],
+    totalAmount: {
+        type: Number,
+        required: true,
+    },
+    orderDate: {
+        type: Date,
+    },
+    paidThrough: {
+        type: String,
+    },
+    paymentResponse: {
+        type: String,
+    },
+    orderStatus: {
+        type: String,
+    },
 }, {
-    // removed these from returned json data
     toJSON: {
         transform(doc, ret) {
-            delete ret.password;
-            delete ret.salt;
-            delete ret.__v;
-            delete ret.createdAt;
-            delete ret.updatedAt;
+            delete ret.__v, delete ret.createdAt, ret.updatedAt;
         },
     },
     timestamps: true,
 });
-// Model
-const Customer = mongoose_1.default.model("Customer", CustomerSchema);
-exports.Customer = Customer;
-//# sourceMappingURL=Customer.js.map
+const Order = mongoose_1.default.model("Order", OrderSchema);
+exports.Order = Order;
+//# sourceMappingURL=Order.js.map
