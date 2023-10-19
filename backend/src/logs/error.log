@@ -1,0 +1,14 @@
+[31m{[39m
+[31m  message: 'error connecting to Mongo database: TypeError: Converting circular structure to JSON\n' +[39m
+[31m    "    --> starting at object with constructor 'Mongoose'\n" +[39m
+[31m    "    |     property 'connections' -> object with constructor 'Array'\n" +[39m
+[31m    "    |     index 0 -> object with constructor 'NativeConnection'\n" +[39m
+[31m    "    --- property 'base' closes the circle",[39m
+[31m  level: 'error',[39m
+[31m  timestamp: '2023-10-14T07:07:09.232Z'[39m
+[31m}[39m
+[31m{[39m
+[31m  message: 'error connecting to Mongo database: MongooseServerSelectionError: connect ECONNREFUSED ::1:27017, connect ECONNREFUSED 127.0.0.1:27017',[39m
+[31m  level: 'error',[39m
+[31m  timestamp: '2023-10-14T07:11:07.289Z'[39m
+[31m}[39m
