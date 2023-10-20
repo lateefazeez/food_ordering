@@ -4,6 +4,7 @@ import { Food, Vendor } from "../models";
 import { findVendor } from "./AdminController";
 import { generateSignature, validatePassword } from "../utility";
 import { CreateFoodInput } from "../dto/Food.dto";
+import { Order } from "../models/Order";
 
 export const VendorLogin = async (
   req: Request,
@@ -221,4 +222,71 @@ export const GetFoods = async (
     status: res.status,
     message: "User not authorized",
   });
+};
+
+/** ---------------------------------- Orders -------------------------------------- **/
+
+export const GetCurrentOrders = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const user = req.user;
+  console.log("User: ", user);
+
+  if (user) {
+    const orders = await Order.find({ vendorId: user._id }).populate(
+      "items.food"
+    );
+    if (orders) {
+      return res.status(200).json(orders);
+    }
+  }
+
+  return res.status(401).json({ message: "Order not found" });
+};
+
+export const ProcessOrder = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const orderId = req.params.id;
+
+  const { status, remarks, time } = req.body; // Accept, Reject, Ready, Delivered, Cancelled, Preparing
+
+  if (orderId) {
+    const order = await Order.findById(orderId).populate("items.food");
+    if (order) {
+      order.orderStatus = status;
+      order.remarks = remarks;
+
+      if (time) {
+        order.readyTime = time;
+      }
+
+      const updatedOrder = await order.save();
+
+      if (updatedOrder) return res.status(200).json(updatedOrder);
+    }
+  }
+
+  return res.status(401).json({ message: "Unable to process order" });
+};
+
+export const GetOrderDetails = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const orderId = req.params.id;
+
+  if (orderId) {
+    const order = await Order.findById(orderId).populate("items.food");
+    if (order) {
+      return res.status(200).json(order);
+    }
+  }
+
+  return res.status(401).json({ message: "Order not found" });
 };
