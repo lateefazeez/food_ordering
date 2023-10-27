@@ -1,10 +1,11 @@
 import { Request, Response, NextFunction } from "express";
-import { EditVendorInput, VendorLoginInput } from "../dto";
+import { CreateOfferInput, EditVendorInput, VendorLoginInput } from "../dto";
 import { Food, Vendor } from "../models";
 import { findVendor } from "./AdminController";
 import { generateSignature, validatePassword } from "../utility";
 import { CreateFoodInput } from "../dto/Food.dto";
 import { Order } from "../models/Order";
+import { Offer } from "../models/Offer";
 
 export const VendorLogin = async (
   req: Request,
@@ -137,11 +138,17 @@ export const UpdateVendorServices = async (
   next: NextFunction
 ) => {
   const user = req.user;
+  const { lat, long } = req.body;
   if (user) {
     const existingVendor = await findVendor(user._id);
 
     if (existingVendor) {
       existingVendor.serviceAvailable = !existingVendor.serviceAvailable;
+
+      if (lat && long) {
+        existingVendor.lat = lat;
+        existingVendor.long = long;
+      }
 
       const updatedVendor = await existingVendor.save();
 
@@ -289,4 +296,134 @@ export const GetOrderDetails = async (
   }
 
   return res.status(401).json({ message: "Order not found" });
+};
+
+/** ---------------------------------- Offers -------------------------------------- **/
+export const GetOffers = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const user = req.user;
+
+  if (user) {
+    const offers = await Offer.find();
+    if (offers) {
+      return res.status(200).json(offers);
+    }
+  }
+
+  return res
+    .status(401)
+    .json({ message: "No Offers Available, Check back at a later time!" });
+};
+
+export const AddOffer = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const user = req.user;
+
+  if (user) {
+    const {
+      offerType,
+      title,
+      description,
+      minValue,
+      offerAmount,
+      startValidity,
+      endValidity,
+      promoCode,
+      promoType,
+      bank,
+      bins,
+      pinCode,
+      isActive,
+    } = <CreateOfferInput>req.body;
+
+    const existingVendor = await findVendor(user._id);
+
+    if (existingVendor) {
+      const createdOffer = await Offer.create({
+        title: title,
+        description: description,
+        minValue: minValue,
+        offerAmount: offerAmount,
+        offerType: offerType,
+        startValidity: startValidity,
+        endValidity: endValidity,
+        promoCode: promoCode,
+        promoType: promoType,
+        bank: bank,
+        bins: bins,
+        pinCode: pinCode,
+        isActive: isActive,
+        vendors: [existingVendor],
+      });
+
+      if (createdOffer) {
+        // existingVendor.offers.push(createdOffer);
+        existingVendor.save();
+
+        return res.status(200).json(createdOffer);
+      }
+    }
+  }
+
+  return res.status(401).json({ message: "Unable to create offer" });
+};
+
+export const UpdateOffer = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const user = req.user;
+  const offerId = req.params.id;
+
+  const {
+    offerType,
+    title,
+    description,
+    minValue,
+    offerAmount,
+    startValidity,
+    endValidity,
+    promoCode,
+    promoType,
+    bank,
+    bins,
+    pinCode,
+    isActive,
+  } = <CreateOfferInput>req.body;
+
+  if (offerId) {
+    const offer = await Offer.findById(offerId);
+    if (offer) {
+      const vendor = await findVendor(user._id);
+
+      if (vendor) {
+        offer.title = title;
+        offer.description = description;
+        offer.minValue = minValue;
+        offer.offerAmount = offerAmount;
+        offer.offerType = offerType;
+        offer.startValidity = startValidity;
+        offer.endValidity = endValidity;
+        offer.promoCode = promoCode;
+        offer.promoType = promoType;
+        offer.bank = bank;
+        offer.bins = bins;
+        offer.pinCode = pinCode;
+        offer.isActive = isActive;
+
+        const updatedOffer = await offer.save();
+
+        if (updatedOffer) return res.status(200).json(updatedOffer);
+      }
+    }
+  }
+
+  return res.status(401).json({ message: "Unable to update offer" });
 };

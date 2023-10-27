@@ -14,6 +14,8 @@ interface VendorDoc extends Document {
   coverImages: [string];
   rating: number;
   foods: any;
+  lat: number;
+  long: number;
 }
 
 // Schema
@@ -67,6 +69,12 @@ const VendorSchema: Schema = new Schema(
     rating: {
       type: Number,
       default: 0,
+    },
+    lat: {
+      type: Number,
+    },
+    long: {
+      type: Number,
     },
     foods: [
       {

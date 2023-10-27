@@ -1,6 +1,7 @@
 import { plainToClass } from "class-transformer";
 import express, { Request, Response, NextFunction } from "express";
 import {
+  CartItem,
   CreateCustomerInputs,
   EditCustomerProfileInputs,
   OrderInputs,
@@ -16,8 +17,10 @@ import {
   validatePassword,
 } from "../utility";
 import { Customer } from "../models/Customer";
-import { Food } from "../models";
+import { Food, Vendor } from "../models";
 import { Order } from "../models/Order";
+import { Offer } from "../models/Offer";
+import { Transaction } from "../models/Transaction";
 
 export const CustomerSignup = async (
   req: Request,
@@ -38,6 +41,14 @@ export const CustomerSignup = async (
   const userPassword = await generateHashedPassword(password, salt);
 
   const { otp, expiry } = generateOTP();
+
+  const existingCustomer = await Customer.findOne({ email: email });
+
+  if (existingCustomer !== null) {
+    return res
+      .status(400)
+      .json({ message: "A user exists with the provided email!" });
+  }
 
   const result = await Customer.create({
     email: email,
@@ -238,7 +249,85 @@ export const UpdateCustomerProfile = async (
   return res.status(400).json({ message: "User Profile cannot be updated" });
 };
 
+/** ------------------------------- PAYMENT SECTION --------------------------------- **/
+export const CreatePayment = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  // grab current logged in customer
+  const customer = req.user;
+
+  if (customer) {
+    const { amount, paymentMode, offerId } = req.body;
+    let payableAmount = Number(amount);
+
+    if (offerId) {
+      const appliedOffer = await Offer.findById(offerId);
+
+      if (appliedOffer) {
+        if (appliedOffer.isActive) {
+          if (appliedOffer.promoType === "USER") {
+            // Can only be applied once per user
+          } else {
+            // Apply offer
+            payableAmount = payableAmount - appliedOffer.offerAmount;
+          }
+        }
+      }
+    }
+
+    // Perform payment gateway charge API call
+
+    // Create Record on Transaction
+    const transaction = await Transaction.create({
+      orderId: "",
+      vendorId: "",
+      customer: customer._id,
+      orderValue: payableAmount,
+      offerUsed: offerId || "NA",
+      status: "OPEN" /* OPEN, SUCCESS, FAILED */,
+      paymentMode: paymentMode,
+      paymentResponse: "Payment is Cash on Delivery",
+    });
+
+    // Return Trabsaction Id
+    return res.status(200).json(transaction);
+  }
+
+  return res.status(400).json({ message: "Error with Payment" });
+};
+
+/** ------------------------------- DELIVERY NOTIFICATION --------------------------------- **/
+export const assignDelivery = async (orderId: string, vendorId: string) => {
+  // find the vendor
+  const vendor = await Vendor.findById(vendorId);
+
+  if (vendor) {
+    const areaCode = vendor.pinCode;
+    const vendorLat = vendor.lat;
+    const vendorLong = vendor.long;
+
+    // find available delivery driver
+    // check nearest delivery driver and assign order
+  }
+
+  // update delivery ID
+};
+
 /** ------------------------------- ORDER SECTION --------------------------------- **/
+
+const validateTransaction = async (txnId: string) => {
+  const currentTransaction = await Transaction.findById(txnId);
+
+  if (currentTransaction) {
+    if (currentTransaction.status.toLowerCase() !== "failed") {
+      return { status: true, transaction: currentTransaction };
+    }
+  }
+
+  return { status: false, transaction: null };
+};
 
 export const CreateOrder = async (
   req: Request,
@@ -248,13 +337,20 @@ export const CreateOrder = async (
   // grab current logged in customer
   const customer = req.user;
 
+  const { txnId, amount, items } = <OrderInputs>req.body;
+
   if (customer) {
-    // create an oder ID
+    const { status, transaction } = await validateTransaction(txnId);
+
+    if (!status) {
+      return res.status(400).json({ message: "Error with Transaction" });
+    }
+    // create an oder if transaction is valid
     const orderId = `${Math.floor(Math.random() * 899999) + 1000}`;
 
     const profile = await Customer.findById(customer._id);
 
-    const cart = <[OrderInputs]>req.body;
+    // const cart = <[OrderInputs]>req.body;
 
     let cartItems = Array();
 
@@ -265,11 +361,11 @@ export const CreateOrder = async (
     // Calculate order amount
     const foods = await Food.find()
       .where("_id")
-      .in(cart.map((item) => item._id))
+      .in(items.map((item) => item._id))
       .exec();
 
     foods.map((food) => {
-      cart.map(({ _id, unit }) => {
+      items.map(({ _id, unit }) => {
         if (food._id == _id) {
           vendorId = food.vendorId;
           netAmount += food.price * unit;
@@ -286,14 +382,11 @@ export const CreateOrder = async (
         vendorId: vendorId,
         items: cartItems,
         totalAmount: netAmount,
+        paidAmount: amount,
         orderDate: new Date(),
-        paidThrough: "COD",
-        paymentResponse: "",
         orderStatus: "pending",
         remarks: "",
         deliveryId: "",
-        appliedOffers: false,
-        offerId: null,
         readyTime: 45,
       });
 
@@ -302,8 +395,16 @@ export const CreateOrder = async (
         // add order to customer
         profile.orders.push(currentOrder);
 
+        transaction.vendorId = vendorId;
+        transaction.orderId = orderId;
+        transaction.status = "CONFIRMED";
+
+        transaction.save();
+
         // save customer
         await profile.save();
+
+        assignDelivery(currentOrder.id, vendorId);
 
         return res.status(200).json(profile);
       }
@@ -362,7 +463,7 @@ export const AddtoCart = async (
     const profile = await Customer.findById(customer._id).populate("cart");
     let cartItems = Array();
 
-    const { _id, unit } = <OrderInputs>req.body;
+    const { _id, unit } = <CartItem>req.body;
 
     const food = await Food.findById(_id);
 
@@ -446,4 +547,31 @@ export const DeleteCart = async (
   }
 
   return res.status(400).json({ message: "Cart is already empty" });
+};
+
+/** ------------------------------- OFFERS SECTION --------------------------------- **/
+export const VerifyOffer = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const offerId = req.params.id;
+
+  if (offerId) {
+    const appliedOffer = await Offer.findById(offerId);
+
+    if (appliedOffer) {
+      if (appliedOffer.isActive) {
+        if (appliedOffer.promoType === "USER") {
+          // Can only be applied once per user
+        } else {
+          return res
+            .status(200)
+            .json({ message: "Offer is Valid", offer: appliedOffer });
+        }
+      }
+    }
+  }
+
+  return res.status(400).json({ message: "Offer not valid!" });
 };

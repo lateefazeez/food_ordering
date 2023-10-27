@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { CreateVendorInput } from "../dto/Vendor.dto";
-import { Vendor } from "../models";
+import { DeliveryDriver, Vendor } from "../models";
 import { generateHashedPassword, generateSalt } from "../utility";
+import { Transaction } from "../models/Transaction";
 
 export const findVendor = async (id: string | undefined, email?: string) => {
   if (email) {
@@ -56,6 +57,8 @@ export const CreateVendor = async (
     rating: 0,
     coverImages: [],
     foods: [],
+    lat: 0,
+    long: 0,
   });
 
   return res.json({
@@ -106,5 +109,92 @@ export const GetVendorByID = async (
     status: res.status,
     message: "No Vendor found",
     data: {},
+  });
+};
+
+/** -------------------------------Transaction---------------------------------- */
+export const GetTransactions = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const vendorId = req.params.id;
+
+  const vendor = await findVendor(vendorId);
+
+  const transactions = await Transaction.find();
+
+  if (transactions) {
+    return res.status(200).json({
+      message: "Transactions fetched successfully",
+      data: transactions,
+    });
+  }
+
+  return res.status(404).json({
+    message: "No transactions available",
+    data: [],
+  });
+};
+
+export const GetTransactionById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const transactionId = req.params.id;
+
+  const transaction = await Transaction.findById(transactionId);
+
+  if (transaction) {
+    return res.status(200).json({
+      message: "Transaction fetched successfully",
+      data: transaction,
+    });
+  }
+
+  return res.status(404).json({
+    message: "No transaction found",
+    data: {},
+  });
+};
+
+export const VerifyDriver = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { _id, verified } = req.body;
+
+  if (_id) {
+    const profile = await DeliveryDriver.findById(_id);
+
+    if (profile) {
+      profile.verified = verified;
+      const result = await profile.save();
+      return res.status(200).json(result);
+    }
+  }
+
+  return res.status(400).json({ message: "User Profile cannot be updated" });
+};
+
+export const GetDrivers = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const drivers = await DeliveryDriver.find();
+
+  if (drivers) {
+    return res.status(200).json({
+      message: "Drivers fetched successfully",
+      data: drivers,
+    });
+  }
+
+  return res.status(404).json({
+    message: "No drivers available",
+    data: [],
   });
 };

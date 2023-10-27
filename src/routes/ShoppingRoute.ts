@@ -4,6 +4,7 @@ import {
   GetFoodsAvailableIn30,
   GetRestaurantById,
   GetTopRestaurants,
+  GetVendorOffers,
   SearchFoods,
 } from "../controllers";
 
@@ -23,5 +24,8 @@ router.get("/search/:pincode", SearchFoods);
 
 /** ---------------------------------- Find Restaurants by ID -------------------------------------- **/
 router.get("/restaurant/:id", GetRestaurantById);
+
+/** ---------------------------------- Find Offers -------------------------------------- **/
+router.get("/offers/:pincode", GetVendorOffers);
 
 export { router as shoppingRoute };

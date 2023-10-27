@@ -6,6 +6,7 @@ import {
   vendorRoute,
   customerRoute,
 } from "../routes";
+import { DeliveryRoute } from "../routes/DeliveryRoute";
 
 const PORT = process.env.PORT || 8000;
 
@@ -19,6 +20,7 @@ export default async (app: Application) => {
   app.use("/admin", adminRoute);
   app.use("/vendor", vendorRoute);
   app.use("/customer", customerRoute);
+  app.use("/driver", DeliveryRoute);
 
   app.use(shoppingRoute);
 
