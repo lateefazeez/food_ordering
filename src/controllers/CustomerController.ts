@@ -13,11 +13,12 @@ import {
   generateOTP,
   generateSalt,
   generateSignature,
+  logger,
   onRequestOTP,
   validatePassword,
 } from "../utility";
 import { Customer } from "../models/Customer";
-import { Food, Vendor } from "../models";
+import { DeliveryDriver, Food, Vendor } from "../models";
 import { Order } from "../models/Order";
 import { Offer } from "../models/Offer";
 import { Transaction } from "../models/Transaction";
@@ -309,6 +310,26 @@ export const assignDelivery = async (orderId: string, vendorId: string) => {
     const vendorLong = vendor.long;
 
     // find available delivery driver
+    const deliveryDriver = await DeliveryDriver.findOne({
+      isAvailable: true,
+      verified: true,
+      pincode: areaCode,
+    });
+    if (deliveryDriver) {
+      logger.info(deliveryDriver[0]);
+      // get the nearest delivery driver
+
+      const currentOrder = await Order.findById(orderId);
+      if (currentOrder) {
+        // update order with delivery driver
+        currentOrder.deliveryId = deliveryDriver.id;
+        const response = await currentOrder.save();
+
+        logger.info(response);
+
+        // send notification to vendor about the new order using firebase push notification
+      }
+    }
     // check nearest delivery driver and assign order
   }
 
@@ -390,24 +411,22 @@ export const CreateOrder = async (
         readyTime: 45,
       });
 
-      if (currentOrder) {
-        profile.cart = [] as any;
-        // add order to customer
-        profile.orders.push(currentOrder);
+      profile.cart = [] as any;
+      // add order to customer
+      profile.orders.push(currentOrder);
 
-        transaction.vendorId = vendorId;
-        transaction.orderId = orderId;
-        transaction.status = "CONFIRMED";
+      transaction.vendorId = vendorId;
+      transaction.orderId = orderId;
+      transaction.status = "CONFIRMED";
 
-        transaction.save();
+      transaction.save();
 
-        // save customer
-        await profile.save();
+      // save customer
+      await profile.save();
 
-        assignDelivery(currentOrder.id, vendorId);
+      assignDelivery(currentOrder.id, vendorId);
 
-        return res.status(200).json(profile);
-      }
+      return res.status(200).json(profile);
     }
   }
 

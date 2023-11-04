@@ -9,6 +9,7 @@ interface DeliveryDriverDoc extends Document {
   address: string;
   phone: string;
   verified: boolean;
+  pincode: string;
   lat: number;
   long: number;
   isAvailable: boolean;
@@ -45,6 +46,9 @@ const DeliveryDriverSchema: Schema = new Schema(
     verified: {
       type: Boolean,
       required: false,
+    },
+    pincode: {
+      type: String,
     },
     lat: {
       type: Number,

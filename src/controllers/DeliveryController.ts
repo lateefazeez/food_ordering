@@ -182,8 +182,11 @@ export const UpdateDeliveryStatus = async (
   const driver = req.user;
 
   if (driver) {
+    const { lat, long } = req.body;
     const profile = await DeliveryDriver.findById(driver._id);
     if (profile) {
+      profile.lat = lat;
+      profile.long = long;
       profile.isAvailable = !profile.isAvailable;
       const result = await profile.save();
       return res.status(200).json(result);
